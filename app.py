@@ -185,19 +185,19 @@ def setup_agents(openai_api_key: str) -> Tuple[Agent, Agent]:
     
     return processor_agent, tts_agent
     
-    async def process_query(
-        query: str,
-        client: QdrantClient, 
-        embedding_model: TextEmbedding,
-        collection_name: str,
-        openai_api_key: str, voice: str) -> Dict:
-        """Process user query and generate voice response."""
-        try:
-            st.info("Step 1: Generating query embedding and searching documents...")
-        except Exception as e:
-            st.error(f"❌ Error during query processing: {str(e)}")
-            return {
-                "status": "error",
-                "error": str(e),
-                "query": query
-            }
+async def process_query(
+    query: str,
+    client: QdrantClient, 
+    embedding_model: TextEmbedding,
+    collection_name: str,
+    openai_api_key: str, voice: str) -> Dict:
+    """Process user query and generate voice response."""
+    try:
+        st.info("Step 1: Generating query embedding and searching documents...")
+    except Exception as e:
+        st.error(f"❌ Error during query processing: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "query": query
+        }
