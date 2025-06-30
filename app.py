@@ -89,5 +89,47 @@ def setup_qdrant() -> Tuple[QdrantClient, TextEmbedding]:
         api_key=st.session_state.qdrant_api_key
     )
     
-    embedding = TextEmbedding()
+    embedding_model = TextEmbedding()
+    test_embeddings = list(embedding_model.embed(["test"]))[0]
+    embedding_dim = len(test_embeddings)
     
+    try:
+        client.create_collection(
+            collection_name= COLLECTION_NAME,
+            vectors_config=VectorParams(
+                size = embedding_dim,
+                distance=Distance.COSINE
+            )
+        )
+    except Exception as e:
+        if "already exists" not in str(e):
+            raise e
+        
+    return client, embedding_model
+
+# PDF Processing Function
+def process_pdf(pdf_file) -> List:
+    """Process the PDF File and split the data into chunks with metadata"""
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix = ".pdf") as tmp_file:
+            tmp_file.write(pdf_file.getvalue())
+            loader = PyPDFLoader(tmp_file.name)
+            documents = loader.load()
+            
+            # Adding the source metadata
+            for doc in documents:
+                doc.metadata.update({
+                    "source_type": "pdf",
+                    "file_name": pdf_file.name,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size = 1000,
+                chunk_overlap = 200
+            )
+            
+            return text_splitter.split_documents(documents)
+    except Exception as e:
+        st.error(f"PDF Processing Error: {str(e)}")
+        return[]
