@@ -42,3 +42,39 @@ def init_session_state() -> None:
     for key, value in defaults.items():
         if key is not st.session_state:
             st.session_state[key] = value
+            
+
+def setup_sidebar() -> None:
+    """Configure sidebar with API settings and configurations"""
+    with st.sidebar:
+        st.title("API Configuration")
+        st.markdown("-------")
+        
+        st.session_state.qdrant_url = st.text_input(
+            "Qdrant URL",
+            value = st.session_state.qdrant_url,
+            type = "password"
+        )
+        
+        st.session_state.qdrant_api_key = st.text_input(
+            "Qdrant API Key",
+            value = st.session_state.qdrant_api_key,
+            type="password"
+        )
+        
+        st.session_state.openai_api_key = st.text_input(
+            "OpenAI API Key",
+            value = st.session_state.openai_api_key,
+            type = "password"
+        )
+        
+        st.markdown("-------")
+        st.markdown("### Voice Configuration")
+        voices = ["alloy", "ash", "ballad", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer", "verse"]
+        
+        st.session_state.selected_voice = st.selectbox(
+            "Select Voice",
+            options=voices,
+            index=voices.index(st.session_state.selected_voice),
+            help = "Choose the voice for the audio response"
+        )
