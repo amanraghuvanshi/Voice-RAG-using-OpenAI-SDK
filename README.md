@@ -1,5 +1,6 @@
 ## Voice RAG with OpenAI SDK
 
+#### **Live at: https://voice-rag-application-openai-sdk.streamlit.app/**
 This script demonstrates how to build a voice-enabled Retrieval-Augmented Generation (RAG) system using OpenAI's SDK and Streamlit. The application allows users to upload PDF documents, ask questions, and receive both text and voice responses using OpenAI's text-to-speech capabilities.
 
 ### Features
