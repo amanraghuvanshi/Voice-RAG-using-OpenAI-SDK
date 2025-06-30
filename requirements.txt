@@ -7,3 +7,4 @@ langchain-community
 langchain-openai
 openai
 pypdf
+openai[voice_helpers]
