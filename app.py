@@ -133,3 +133,25 @@ def process_pdf(pdf_file) -> List:
     except Exception as e:
         st.error(f"PDF Processing Error: {str(e)}")
         return[]
+    
+def store_embeddings(
+    client: QdrantClient,
+    embedding_model: TextEmbedding, documents: List, collection_name: str ) -> str:
+    
+    """Store document embedding in Qdrant"""
+    for doc in documents:
+        embeddings = list(embedding_model.embed([doc.page_content]))[0]
+        client.upsert(
+            collection_name = collection_name,
+            points=[
+                models.PointStruct(
+                    id = str(uuid.uuid4()),
+                    vector = embeddings.tolist(),
+                    payload = {
+                        "content": doc.page_content,
+                        **doc.metadata
+                    }
+                )
+            ]
+        )
+    
