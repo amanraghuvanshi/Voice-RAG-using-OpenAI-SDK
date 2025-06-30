@@ -193,7 +193,104 @@ async def process_query(
     openai_api_key: str, voice: str) -> Dict:
     """Process user query and generate voice response."""
     try:
-        st.info("Step 1: Generating query embedding and searching documents...")
+        st.info("🔄️ Step 1: Generating query embedding and searching documents...")
+        # Getting query embedding and search
+        query_embeddings = list(embedding_model.embed([query]))[0]
+        st.write(f"Generated Embedding of size: {len(query_embeddings)}")
+        
+        search_resp = client.query_points(
+            collection_name = collection_name,
+            query = query_embeddings.tolist(),
+            limit = 3,
+            with_payload=True
+        )
+        
+        search_results = search_resp.points if hasattr(search_resp, "points") else []
+        st.write(f"Found {len(search_results)} relevant documents")
+        
+        if not search_results:
+            raise Exception("No relevant documents found in the vector database")
+        
+        if not search_results:
+            raise Exception("No relevant documents found in the vector database")
+        
+        st.info("🔄️ Step 2: Preparing context from search results...")
+        # Prepare context from search results
+        context = "Based on the following documentation: \n\n"
+        for i, result in enumerate(search_results, 1):
+            payload = result.payload
+            if not payload:
+                continue
+            content = payload.get("content", "")
+            source = payload.get("file_name", "Unknown source")
+            context += f"From {source}: \n{content}\n\n"
+            st.write(f"Document {i} from {source}")
+        context += f"\nUser Question: {query}\n\n"
+        context += "Please provide a clear, concise answer that can be easily spoken out loud."
+        
+        st.info("🔄️ Step 3: Setting up agents..")
+        # Setting up agent if not initiated already
+        if not st.session_state.processor_agent or not st.session_state.tts_agent:
+            processor_agent, tts_agent = setup_agents(openai_api_key)
+            st.session_state.processor_agent = st.session_state.processor_agent = processor_agent
+            st.session_state.tts_agent = st.session_state.tts_agent = tts_agent
+            st.write("Initialized new processor and TTS agents")
+        else:
+            st.write("Using Existing Agents")
+        
+        st.info("🔄️ Step 4: Generating text responses")
+        # Generate text repsonse using processor agent
+        processor_results = await Runner.run(st.session_state.processor_agent, context)
+        text_response = processor_results.final_output
+        st.write(f"Generated Text Response of length: {len(text_response)}")
+        
+        st.info("🔄️ Step 5: Generating voice instructions...")
+        # Generating voice instructions using TTS Agent
+        tts_results = await Runner.run(st.session_state.tts_agent, text_response)
+        voice_instructions = tts_results.final_output
+        st.write(f"Generated Voice Instruction of length: {len(voice_instructions)}")
+        
+        st.info("🔄️ Step 6: Preparing context from search results...")
+        # Generate and plat the audio
+        async_openai = AsyncOpenAI(api_key=openai_api_key)
+        
+        # First Create streaming response
+        async with async_openai.audio.speech.with_streaming_response.create(
+            model = "gpt-4o-mini-tts",
+            voice = voice,
+            input = text_response,
+            instructions = voice_instructions,
+            response_format = "pcm",) as stream_resp:
+            st.write("Starting Playback:")
+            await LocalAudioPlayer().play(stream_resp)
+            st.write("Audio Playback Complete")
+            
+            st.write("Generating downloading MP3 version...")
+            # Also save as MP3 for download
+            audio_resp = await async_openai.audio.speech.create(
+                model = "gpt-4o-mini-tts",
+                voice = voice,
+                input = text_response,
+                instructions = voice_instructions,
+                response_format="mp3"
+            )
+            
+            temp_dir = tempfile.gettempdir()
+            audio_path = os.path.join(temp_dir, f"response_{uuid.uuid4()}.mp3")
+            
+            with open(audio_path, "wb") as f:
+                f.write(audio_resp.content)
+            st.write(f"Saved MP3 file to: {audio_path}")
+            
+            st.success("✅ Query Processing Complete")
+            return {
+                "status": "success",
+                "text_response": text_response,
+                "voice_instructions": voice_instructions,
+                "audio_path": audio_path,
+                "sources": [r.payload.get("file_name", "Unknown Source") for r in search_results if r.payload]
+            }
+            
     except Exception as e:
         st.error(f"❌ Error during query processing: {str(e)}")
         return {
@@ -201,3 +298,14 @@ async def process_query(
             "error": str(e),
             "query": query
         }
+
+def main() -> None:
+    """Main Application Function"""
+    st.set_page_config(
+        page_title = "Voice RAG Agent",
+        page_icon = "🎙️",
+        layout = "wide"
+    )
+    
+    init_session_state()
+    setup_sidebar()
