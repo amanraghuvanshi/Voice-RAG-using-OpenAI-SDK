@@ -78,3 +78,16 @@ def setup_sidebar() -> None:
             index=voices.index(st.session_state.selected_voice),
             help = "Choose the voice for the audio response"
         )
+        
+def setup_qdrant() -> Tuple[QdrantClient, TextEmbedding]:
+    """Initialize Qdrant client and embedding model"""
+    if not all([st.session_state.qdrant_url, st.session_state.qdrant_api_key]):
+        raise ValueError("QDrant credentials are not provided or are invalid!")
+    
+    client = QdrantClient(
+        url = st.session_state.qdrant_url,
+        api_key=st.session_state.qdrant_api_key
+    )
+    
+    embedding = TextEmbedding()
+    
